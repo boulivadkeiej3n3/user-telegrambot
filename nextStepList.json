@@ -1,0 +1,173 @@
+{
+    "/start,/homepage,/mainmenu,/main": {
+        "prompt": "Hi User, Please Pick Your Role",
+        "inline_keyboard": {
+            "login-customer": {
+                "text": "🛍️ Customer",
+                "type": [
+                    "callback_data",
+                    "/customer-register-phone"
+                ]
+            },
+            "login-restaurant": {
+                "text": "🍽️ Restaurant Owner",
+                "type": [
+                    "callback_data",
+                    "/resturant-login"
+                ]
+            },
+            "login-raider": {
+                "text": "🚴‍♂️ Rider",
+                "type": [
+                    "callback_data",
+                    "/raider-login"
+                ]
+            }
+        }
+    },
+
+
+  "/customer-register-phone":{
+        "prompt":"${prompt}📞 Send Phone Number",
+         "handler":"async ()=>({call:['/send-register-data',['MSG_TEXT','USER_ID',0]]})"
+  },
+    "/customer-register-location":{
+        "prompt":"${prompt}📍 Enter Full Address & Landmark",
+         "handler":"async ()=>({call:['/send-register-data',['MSG','USER_ID',1]]})"
+  },
+    "/customer-register-pin":{
+        "prompt":"${prompt}🔢 Enter PIN Code",
+         "handler":"()=>({call:['/send-register-data',['MSG_TEXT','USER_ID',2]]})"
+  },
+  "/customer-register-confirm":{
+        "prompt":"✅ Registration Completed Successfully! ",
+         "handler":"()=>({call:['/send-register-data',[null,'USER_ID','confirm']]})"
+  },
+  "/customer-dashboard":{
+        "prompt":"${prompt}",
+         "handler":"()=>{}"
+  },
+  "/send-register-data": {
+       "handler":"async ({specialCall})=>{/*SERVER PART:*/const [userInput,userID,opCode]=specialCall; console.log('Passed To Handler /send-register-data: ',userInput,userID,opCode); const opCodesCallee={0:'/customer-register-phone',1:'/customer-register-location',2:'/customer-register-pin'}; const _serverResponse=(await Axios.post('http://127.0.0.1:3000/register-customer-data/',{userID,opCode,userInput})).data; /*  SERVER ERROR HANDLING: */ if(_serverResponse.error){console.log('SERVER ERROR: ', _serverResponse.error); return {call:{call: opCodesCallee[opCode], prompt:{prompt:'Error Trying to Save Your Data, Try again:'} }}; }  /*+++++++++++*/ if(opCode=='confirm'){return {call:{ call:'/customer-regiser-confirm', _requiredParameters:['USER_ID'] }}  }else{ if(!opCodesCallee[opCode+1]){return {call:{call:'/customer-register-confirm'}}};  return {call:{call:opCodesCallee[opCode+1]}} };  }"    
+  },
+  "/echo,/ping": {
+        "prompt": "Hi ${username}\n Here's an Echo: ${msg}",
+        "handler": "({specialCall})=>{return {call:[(...data)=>console.log(data),['MSG_TEXT','CHAT_ID']], prompt:(specialCall)?{username:specialCall[0],msg:specialCall[1]}:null}}"
+    },
+
+    "/network_error": {
+        "prompt": "SORRY! We Have Connection Problems, Please try again in a few moments"
+    },
+    "/default": {
+        "prompt": "Unable to process your response 🤷‍♂. \nRewrite your response or pick one the options below",
+        "keyboard": {
+            "/back": {
+                "text": "⬅️ Back ",
+                "type": [
+                    "callback_data",
+                    "/back"
+                ]
+            },
+            "/homepage,/mainmenu": {
+                "text": "🏠Home Page",
+                "type": [
+                    "callback_data",
+                    "/start"
+                ]
+            },
+            "/logout": {
+                "text": "💻 Logout",
+                "type": [
+                    "callback_data",
+                    "/logout"
+                ]
+            },
+            "/ping": {
+                "text": "Just testing Out"
+            }
+        }
+    },
+    "/under-construction": {
+        "prompt": "🚧 Still Under Construction/Development! 🚧",
+        "inline_keyboard": {
+            "/back": {
+                "text": "⬅️ Back ",
+                "type": [
+                    "callback_data",
+                    "/back"
+                ]
+            },
+            "/homepage,/mainmenu,/start": {
+                "text": "🏠Home Page",
+                "type": [
+                    "callback_data",
+                    "/start"
+                ]
+            },
+            "/logout": {
+                "text": "💻 Logout",
+                "type": [
+                    "callback_data",
+                    "/logout"
+                ]
+            }
+        }
+    },
+    "/callback_error": {
+        "prompt": "❌${error}❌",
+        "inline_keyboard": {
+            "/back": {
+                "text": "⬅️ Back ",
+                "type": [
+                    "callback_data",
+                    "/back"
+                ]
+            },
+            "/homepage,/mainmenu": {
+                "text": "🏠Home Page",
+                "type": [
+                    "callback_data",
+                    "/start"
+                ]
+            }
+        }
+    },
+    "/command_error": {
+        "prompt": "❌${error}❌",
+        "inline_keyboard": {
+            "/back": {
+                "text": "⬅️ Back ",
+                "type": [
+                    "callback_data",
+                    "/back"
+                ]
+            },
+            "/homepage,/mainmenu": {
+                "text": "🏠Home Page",
+                "type": [
+                    "callback_data",
+                    "/start"
+                ]
+            }
+        }
+    },
+    "/help": {
+        "prompt": "${error}\n[HELP MENU]\n**=>Commands:**\n${commands}",
+        "inline_keyboard": {
+            "/back": {
+                "text": "⬅️ Back ",
+                "type": [
+                    "callback_data",
+                    "/back"
+                ]
+            },
+            "/homepage,/mainmenu": {
+                "text": "🏠Home Page",
+                "type": [
+                    "callback_data",
+                    "/start"
+                ]
+            }
+        }
+    }
+}
