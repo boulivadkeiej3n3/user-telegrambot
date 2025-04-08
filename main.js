@@ -8,12 +8,15 @@ let   QueryToBeCalledOnMessage="";
 let   PrevCallOnStack         ="";
 const Globals                 ={};
 let $={};
+const HandlingUserInputServer= "http://127.0.0.1:3000"
 const PredefinedSpecialCallValues ={
   "MSG_TEXT":   "msg.text",
   "CHAT_ID":    "msg.chat.id",
   "USERNAME":   "msg.from.username",
   "USER_ID":    "msg.from.id",
   "MSG":        "msg",
+  "LOCATION":   "msg.location",
+  "CHAT_ID":    "msg.chat.id"
 }
 let NexStepList;
 
@@ -193,7 +196,8 @@ return _promptUnformatted;
         if(!_returnedData.call.call){
           console.log(`TO BE PASSED TO CHECK QUERY: ${_returnedData.call}`);
 
-          QueryToBeCalledOnMessage=_returnedData.call;}
+          QueryToBeCalledOnMessage=_returnedData.call;
+        }
        }
        
        //Change Global Variables and Query data accordingly:
@@ -220,13 +224,13 @@ return _promptUnformatted;
     }
         //Execute Immediately if .call is an Array an Object with a .call sub-object and a bunch of other args, that's gonna be used to create a component. Otherwise, lazy call when typed in:
     if(_returnedData?.call?.call){
-      QueryToBeCalledOnMessage=_returnedData.call.call;
+   //   QueryToBeCalledOnMessage=_returnedData.call.call;
         const _command = _returnedData.call.call;
         delete _returnedData.call.call;
         //Parse Required Pararms from msg object and append them to "handler" params(or create new one):
          if(!_returnedData.call.handler) _returnedData.call.handler={};
-            console.log("++++++++++++++++VALID QUERY CALL WITH SPECIAL VALUES+++++++++++++++=")
           if(_returnedData.call._requiredParameters){
+           console.log("++++++++++++++++VALID QUERY CALL WITH SPECIAL VALUES+++++++++++++++=")
              const _requiredParameters=_returnedData.call._requiredParameters;
               _SpecialArgumentsParsed= _requiredParameters.map((_SpecialArgumentsUnParsed)=>eval(PredefinedSpecialCallValues[_SpecialArgumentsUnParsed])) //_parseSpecialArguments(QueryToBeCalledOnMessage[1])
                //ADD Each Key to the _returnedData.call.handler with its value assigned to it before execution
@@ -334,7 +338,23 @@ return returnedKeys;
 
  }
 
+function _evaluateSpecialValues(_specialValues,msg){
+  //ERROR HANDLING: IF Special Values is an empy Array or undefined, then return undefined:
+  if(!_specialValues?.length){
+  return undefined;
+  }
 
+
+ return _specialValues.map((_SpecialArgumentsUnParsed)=>{
+              //Return Special Params Value back, if param is actually a special value:
+              if(PredefinedSpecialCallValues[_SpecialArgumentsUnParsed]){
+                 return eval(PredefinedSpecialCallValues[_SpecialArgumentsUnParsed])
+              }else{
+                //If It doesn't exist, then evaluate it and pass it down as handler arguments:D
+               return eval( `_SpecialArgumentsUnParsed`,_SpecialArgumentsUnParsed);
+              }
+            })
+}
 
 
 async function botRunner(TelegramBotInstance){
@@ -359,16 +379,7 @@ $.on("message",(msg)=>{
         console.log("UnParsed Special Arguments: ", QueryToBeCalledOnMessage[1])
         const _callbackQueryCheckStatus=_checkQueryToBeCalledArguments([QueryToBeCalledOnMessage[0],QueryToBeCalledOnMessage[1]],_requiredParameters, _typedArguments);
           if("special-call,function".match(_callbackQueryCheckStatus)){
-            _SpecialArgumentsParsed= QueryToBeCalledOnMessage[1].map((_SpecialArgumentsUnParsed)=>{
-              //Return Special Params Value back, if param is actually a special value:
-              if(PredefinedSpecialCallValues[_SpecialArgumentsUnParsed]){
-                 return eval(PredefinedSpecialCallValues[_SpecialArgumentsUnParsed])
-              }else{
-                //If It doesn't exist, then evaluate it and pass it down as handler arguments:D
-               return eval (_SpecialArgumentsUnParsed);
-
-              }
-            }) //_parseSpecialArguments(QueryToBeCalledOnMessage[1])
+            _SpecialArgumentsParsed= _evaluateSpecialValues(QueryToBeCalledOnMessage[1],msg);
           }
           //IF it's a query direct call or a function call with special arguments, then parse those arguments and pass them as "args.handler" for a query call, or directly to the function called:
 
@@ -463,12 +474,20 @@ $.on("message",(msg)=>{
 })
 /*************************************************/
 $.on("callback_query",(_query)=>{
-   console.log("_query: ", _query.data,_query)
+   console.log("_query: ", _query.data,_query);
+   const _passedArguments =_query.data.replace(/^\/\S+/,"").match(/\S+/g);
+   const _SpecialArgumentsParsed   = _evaluateSpecialValues(_passedArguments,_query.message);
+   const _handlerArgs={};
+   _handlerArgs.specialCall=_SpecialArgumentsParsed;
 
+
+    console.log(_passedArguments, "\+++++++++++",_SpecialArgumentsParsed);
+  console.log(`[CALL_BACK QUERY SPECIAL VALUES]: ${(_SpecialArgumentsParsed)}`)
   //Cancel The current Callback query if another button is clicked. We Know buttons since the only time this event is emitted is where a button is clicked:
    console.log("QueryToBeCalledOnMessage When button is clicked: ",QueryToBeCalledOnMessage);
-
- const _callBackFiredResponse= _stepListOptionExecuter(_query.data,_query.message.chat.id,{},_query.message)
+   console.log(`QUERY_BACK_CALL_PASSED HANDLER ARGS: `);
+   console.log(((_SpecialArgumentsParsed)?{"specialCall":_SpecialArgumentsParsed}:{}))
+ const _callBackFiredResponse= _stepListOptionExecuter(_query.data.match(/^\/\S+/,"")[0],_query.message.chat.id,{handler:_handlerArgs},_query.message)
    
   if(!_callBackFiredResponse){
       //ERROR HANDLING, since this is a callback_quer, means it was fired by another keyboard button, then we can safely assume that the command given is still under construction, and doesn't have a configuration yet :).
