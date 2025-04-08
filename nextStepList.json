@@ -6,7 +6,7 @@
                 "text": "🛍️ Customer",
                 "type": [
                     "callback_data",
-                    "/customer-register-phone"
+                    "/send-register-data login CHAT_ID"
                 ]
             },
             "login-restaurant": {
@@ -33,22 +33,52 @@
   },
     "/customer-register-location":{
         "prompt":"${prompt}📍 Enter Full Address & Landmark",
-         "handler":"async ()=>({call:['/send-register-data',['MSG','USER_ID',1]]})"
+         "handler":"async ()=>({call:['/send-register-data',['LOCATION','USER_ID',1]]})"
   },
     "/customer-register-pin":{
         "prompt":"${prompt}🔢 Enter PIN Code",
          "handler":"()=>({call:['/send-register-data',['MSG_TEXT','USER_ID',2]]})"
   },
   "/customer-register-confirm":{
-        "prompt":"✅ Registration Completed Successfully! ",
-         "handler":"()=>({call:['/send-register-data',[null,'USER_ID','confirm']]})"
+        "prompt":"✅ Registration Completed Successfully!\n\n💳 Your Telegram Digital ID: CUST-${USER_ID}\n📌 Save this ID for support & verification ",
+         "handler":"({USER_ID})=>({prompt:{USER_ID}})"
   },
   "/customer-dashboard":{
-        "prompt":"${prompt}",
-         "handler":"()=>{}"
+        "prompt":"Welcome ${CHAT_ID}!\nYour Digital ID: ${CUST_ID}\n📍 Your Location: ${PIN}\n📦 Orders: 0 Pending, 0 Completed\n💰 Wallet: ₹0",
+        "inline_keyboard": {
+            "view-restaurants": {
+                "text": "🔹 View Restaurants �",
+                "type": [
+                    "callback_data",
+                    "/view-restaurants CHAT_ID"
+                ]
+            },
+            "track-orders": {
+                "text": "🔹 Track My Order 🔍",
+                "type": [
+                    "callback_data",
+                    "/track-orders CHAT_ID"
+                ]
+            },
+            "view-inventory": {
+                "text": "🔹 My Orders 📦",
+                "type": [
+                    "callback_data",
+                    "/view-inventory CHAT_ID"
+                ]
+            },     
+            "call-customer-support": {
+                "text": "🔹 Support �",
+                "type": [
+                    "callback_data",
+                    "/customer-support"
+                ]
+            }
+        },
+         "handler":"(_data)=>{ return _data}"
   },
   "/send-register-data": {
-       "handler":"async ({specialCall})=>{/*SERVER PART:*/const [userInput,userID,opCode]=specialCall; console.log('Passed To Handler /send-register-data: ',userInput,userID,opCode); const opCodesCallee={0:'/customer-register-phone',1:'/customer-register-location',2:'/customer-register-pin'}; const _serverResponse=(await Axios.post('http://127.0.0.1:3000/register-customer-data/',{userID,opCode,userInput})).data; /*  SERVER ERROR HANDLING: */ if(_serverResponse.error){console.log('SERVER ERROR: ', _serverResponse.error); return {call:{call: opCodesCallee[opCode], prompt:{prompt:'Error Trying to Save Your Data, Try again:'} }}; }  /*+++++++++++*/ if(opCode=='confirm'){return {call:{ call:'/customer-regiser-confirm', _requiredParameters:['USER_ID'] }}  }else{ if(!opCodesCallee[opCode+1]){return {call:{call:'/customer-register-confirm'}}};  return {call:{call:opCodesCallee[opCode+1]}} };  }"    
+       "handler":"async (_data)=>{ console.log('Passed To Handler /send-register-data: ');console.log(_data.specialCall);/** Check If This is the first call**/if(_data?.specialCall?.[0]=='login'){ /*Check if User Exists*/const CustomerSavedInfo= (await Axios.post(HandlingUserInputServer+'/login-customer/',{userID:_data?.specialCall?.[1]})).data; if(CustomerSavedInfo){return ({call:{call:'/customer-dashboard',handler:{ prompt:{CHAT_ID:_data?.specialCall?.[1],PIN:CustomerSavedInfo.PIN, CUST_ID:CustomerSavedInfo.cust_id } } }})} /*Return First Registeration Call since user doesn't exist*/return {call:{call:'/customer-register-phone'}} } /*SERVER PART:*/const [userInput,userID,opCode]=_data.specialCall;  const opCodesCallee={0:'/customer-register-phone',1:'/customer-register-location',2:'/customer-register-pin'}; const _serverResponse=(await Axios.post(HandlingUserInputServer+'/register-customer-data/',{userID,opCode,userInput})).data; /*  SERVER ERROR HANDLING: */ if(_serverResponse.error){console.log('SERVER ERROR: ', _serverResponse.error); return {call:{call: opCodesCallee[opCode], prompt:{prompt:_serverResponse.error} }}; }  /*+++++++++++*/  if(!opCodesCallee[opCode+1]&& typeof(opCode)=='number'){ return ({call:{call:'\/customer-register-confirm', '_requiredParameters':['USER_ID']}})  } return ({call:{call:opCodesCallee[opCode+1]}});  }"    
   },
   "/echo,/ping": {
         "prompt": "Hi ${username}\n Here's an Echo: ${msg}",
